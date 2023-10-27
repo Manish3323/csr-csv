@@ -169,6 +169,7 @@ def process_file(event):
 
     print(creationList.columns)
     creationList['Created At'] = datenow
+    creationList['Status Code'] = creationList.apply(assignStatusCode, axis=1)
 
     creationList = creationList[['ATM ID', 'Action Code Updated', 'Status Code', 'Created At', 'AGE']]
     creationList.set_index('ATM ID', inplace=True)
