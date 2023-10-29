@@ -2,43 +2,49 @@ importScripts("https://cdn.jsdelivr.net/pyodide/v0.22.1/full/pyodide.js");
 
 function sendPatch(patch, buffers, msg_id) {
   self.postMessage({
-    type: 'patch',
+    type: "patch",
     patch: patch,
-    buffers: buffers
-  })
+    buffers: buffers,
+  });
 }
 
 async function startApplication() {
   console.log("Loading pyodide!");
-  self.postMessage({type: 'status', msg: 'Loading pyodide'})
+  self.postMessage({ type: "status", msg: "Loading pyodide" });
   self.pyodide = await loadPyodide();
   self.pyodide.globals.set("sendPatch", sendPatch);
   console.log("Loaded!");
   await self.pyodide.loadPackage("micropip");
-  const env_spec = ['https://cdn.holoviz.org/panel/0.14.4/dist/wheels/bokeh-2.4.3-py3-none-any.whl', 'https://cdn.holoviz.org/panel/0.14.4/dist/wheels/panel-0.14.4-py3-none-any.whl', 'pyodide-http==0.1.0', 'openpyxl', 'pandas']
+  const env_spec = [
+    "https://cdn.holoviz.org/panel/0.14.4/dist/wheels/bokeh-2.4.3-py3-none-any.whl",
+    "https://cdn.holoviz.org/panel/0.14.4/dist/wheels/panel-0.14.4-py3-none-any.whl",
+    "pyodide-http==0.1.0",
+    "openpyxl",
+    "pandas",
+  ];
   for (const pkg of env_spec) {
     let pkg_name;
-    if (pkg.endsWith('.whl')) {
-      pkg_name = pkg.split('/').slice(-1)[0].split('-')[0]
+    if (pkg.endsWith(".whl")) {
+      pkg_name = pkg.split("/").slice(-1)[0].split("-")[0];
     } else {
-      pkg_name = pkg
+      pkg_name = pkg;
     }
-    self.postMessage({type: 'status', msg: `Installing ${pkg_name}`})
+    self.postMessage({ type: "status", msg: `Installing ${pkg_name}` });
     try {
       await self.pyodide.runPythonAsync(`
         import micropip
         await micropip.install('${pkg}');
       `);
-    } catch(e) {
-      console.log(e)
+    } catch (e) {
+      console.log(e);
       self.postMessage({
-	type: 'status',
-	msg: `Error while installing ${pkg_name}`
+        type: "status",
+        msg: `Error while installing ${pkg_name}`,
       });
     }
   }
   console.log("Packages loaded!");
-  self.postMessage({type: 'status', msg: 'Executing code'})
+  self.postMessage({ type: "status", msg: "Executing code" });
   const code = `
   
 import asyncio
@@ -109,19 +115,15 @@ def assignAtmIdNew(df):
   return df['Terminal ID'][3:]
 
 def assignStatusCode(row):
-  faults = faultDist.index[faultDist['Action Code'] == row['Action Code Updated']]
-  for each in faults:
-    if(len(faultDist['ESQ/Inactive Problem Description'][each].strip()) > 0):
-      return faultDist['Status Code'][each]
+  if(~np.isnan(row['Action Code Updated'])):
+    found = faultDist[(row['Action Code Updated'] == faultDist['Action Code']) & (faultDist['ESQ/Inactive Problem Description'] == row['Fault'].strip())]
+    if(len(found) > 0):
+      return found['Status Code'].values[0]
   return -999
 
 def assignActionCode(row):
-  faultsDesc = faultDist['ESQ/Inactive Problem Description'].values
-  codes = []
-  for i in range(len(faultsDesc)):
-    if(faultsDesc[i].strip() == row['Fault'].strip()):
-      codes.append(faultDist['Action Code'][i])
-  return codes
+  found = faultDist[faultDist['ESQ/Inactive Problem Description'] == row['Fault'].strip()]
+  return found['Action Code'].values
 
 def assign_new_col(row):
   row['ATM ID'] = row['ID']
@@ -180,9 +182,10 @@ def process_file(event):
     else:
       creationList = mrgedOutOfService
 
-    print(creationList.columns)
-    creationList['Created At'] = creationList['Started at']
+    # print(creationList.columns)
+    # creationList['Created At'] = creationList['Started at']
     creationList['Status Code'] = creationList.apply(assignStatusCode, axis=1)
+    creationList.rename(columns = {'Started at':'Created At'}, inplace = True)
 
     creationList = creationList[['ATM ID', 'Action Code Updated', 'Status Code', 'Created At']]
     creationList.set_index('ATM ID', inplace=True)
@@ -263,44 +266,45 @@ def main():
 main()
 
 await write_doc()
-  `
+  `;
 
   try {
-    const [docs_json, render_items, root_ids] = await self.pyodide.runPythonAsync(code)
+    const [docs_json, render_items, root_ids] =
+      await self.pyodide.runPythonAsync(code);
     self.postMessage({
-      type: 'render',
+      type: "render",
       docs_json: docs_json,
       render_items: render_items,
-      root_ids: root_ids
-    })
-  } catch(e) {
-    const traceback = `${e}`
-    const tblines = traceback.split('\n')
-    self.postMessage({
-      type: 'status',
-      msg: tblines[tblines.length-2]
+      root_ids: root_ids,
     });
-    throw e
+  } catch (e) {
+    const traceback = `${e}`;
+    const tblines = traceback.split("\n");
+    self.postMessage({
+      type: "status",
+      msg: tblines[tblines.length - 2],
+    });
+    throw e;
   }
 }
 
 self.onmessage = async (event) => {
-  const msg = event.data
-  if (msg.type === 'rendered') {
+  const msg = event.data;
+  if (msg.type === "rendered") {
     self.pyodide.runPythonAsync(`
     from panel.io.state import state
     from panel.io.pyodide import _link_docs_worker
 
     _link_docs_worker(state.curdoc, sendPatch, setter='js')
-    `)
-  } else if (msg.type === 'patch') {
+    `);
+  } else if (msg.type === "patch") {
     self.pyodide.runPythonAsync(`
     import json
 
     state.curdoc.apply_json_patch(json.loads('${msg.patch}'), setter='js')
-    `)
-    self.postMessage({type: 'idle'})
-  } else if (msg.type === 'location') {
+    `);
+    self.postMessage({ type: "idle" });
+  } else if (msg.type === "location") {
     self.pyodide.runPythonAsync(`
     import json
     from panel.io.state import state
@@ -311,8 +315,8 @@ self.onmessage = async (event) => {
             state.location.param.update({
                 k: v for k, v in loc_data.items() if k in state.location.param
             })
-    `)
+    `);
   }
-}
+};
 
-startApplication()
+startApplication();
