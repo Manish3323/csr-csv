@@ -66,10 +66,10 @@ pn.extension(notifications=True)
 pd.options.mode.chained_assignment = None
 
 
-Descriptions = ["SLM Calls to be skipped", "Bank Depd. Calls to be skipped", "CASHOUTERROR", "AB FULL/REJECT BIN OVERFILL", "ALL CASSETTES DOWN/FATAL", "CASHACCEPTORFAULTS", "JPERROR", "ENCRYPTORERROR", "CARDREADERERROR", "CLOSED", "INSUPERVISORY", "LOCAL/COMMUNICATIONERROR ", "EXCLUSIVELOCALERROR ","receipt printer  fatal","receipt paper out","receipt paper low"]
-actionCodes = [27, 4, 15, 47, 26, 26, 46, 8, 8, 34, 7, 34,34,6,6,6]
-statusCodes =["SLM", "Bank Depd.", "COB", "01570","00298", "01188", "01806", "02200", "00479", "00460", "02603", "00459", "00459","01700","01709","01770"]
-GasperStatusDescription = ["SLM", "Bank Dependency", "Cash Out - Bank reason", "Reject Bin Overfill", "ALL Cassettes are Faulted", "Cash Acceptor Faulted Fatal Error", "JP : Not configured", "Encryptor: Error", "ATM Shutdown -Card reader faults", "ATM has been marked Down", "Mode switch moved to Supervisor", "ATM has been DISCONNECTED", "ATM has been DISCONNECTED","Recpt prntr:Fatal","Paper Out","recpt prntr: Paper low"]
+Descriptions = ["CashOut_SBI","receipt printer  fatal","receipt paper out","receipt paper low","down - communication failure","Cash Acceptor Fatal(NCR)","magnetic card read/write  fatal","encryptor  fatal","CLOSE","supervisor mode alarm is on (NCR)","Reject bin overfill","All_CASSETTES_FATAL_SBI(NCR)"]
+actionCodes = [15,6,6,6,34,26,8,8,34,7,47,26]
+statusCodes =["COB","01700","01709","01770","00459","01188","00479","02200","00460","02603","01570","00298"]
+GasperStatusDescription = ["Cash Out - Bank reason","Recpt prntr:Fatal","Paper Out","recpt prntr: Paper low","ATM has been DISCONNECTED","Cash Acceptor Faulted Fatal Error","ATM Shutdown -Card reader faults","Encryptor: Error","Atm has been marked Down","Mode switch moved to Supervisor","Reject Bin Overfill","ALL Cassettes are Faulted"]
 data = {'ESQ/Inactive Problem Description': Descriptions, 'Action Code': actionCodes, 'Status Code': statusCodes, 'Gasper Status Description': GasperStatusDescription}
 faultDist = pd.DataFrame(data)
 
@@ -184,12 +184,10 @@ def process_file(event):
     else:
       creationList = mrgedOutOfService
 
-    # print(creationList.columns)
-    # creationList['Created At'] = creationList['Started at']
     creationList['Status Code'] = creationList.apply(assignStatusCode, axis=1)
     creationList.rename(columns = {'Started at':'Created At'}, inplace = True)
-
-    creationList = creationList[['ATM ID', 'Action Code Updated', 'Status Code', 'Created At']]
+    creationList.rename(columns = {'Fault':'HP fault'}, inplace = True)
+    creationList = creationList[['ATM ID', 'Action Code Updated', 'Status Code', 'Created At','AGE','HP fault']]
     creationList.set_index('ATM ID', inplace=True)
     creationTable.value = creationList
 
