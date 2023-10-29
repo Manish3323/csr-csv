@@ -21,6 +21,7 @@ async function startApplication() {
     "pyodide-http==0.1.0",
     "openpyxl",
     "pandas",
+    "numpy"
   ];
   for (const pkg of env_spec) {
     let pkg_name;
@@ -57,6 +58,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import panel as pn
 import pandas as pd
+import numpy as np
 from datetime import datetime
 from io import StringIO, BytesIO
 
