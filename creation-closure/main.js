@@ -21,7 +21,7 @@ async function startApplication() {
     "pyodide-http==0.1.0",
     "openpyxl",
     "pandas",
-    "numpy"
+    "numpy",
   ];
   for (const pkg of env_spec) {
     let pkg_name;
@@ -91,8 +91,7 @@ flmClosureFileName = f"FLM-{datenow}.csv"
 
 
 def take_action_code(row):
-  row['ACTION_CODE']=row['ACTION_CODE'].split(' ')[0]
-  row['ACTION_CODE']=int(row['ACTION_CODE'])
+  row['ACTION_CODE']=int(row['ACTION_CODE_KEY'])
   return row
 
 def get_csv(table):
@@ -129,17 +128,30 @@ def assignActionCode(row):
 
 def assign_new_col(row):
   row['ATM ID'] = row['ID']
-  row['Status Code'] = row['STATUS NAME']
+  row['Status Code'] = row['STATUS_CODE_KEY']
   return row
 def assignAgeCol(row):
   date_str = row['Started at']
   date_format = '%d-%m-%Y %I:%M:%S %p'
   date_obj = datetime.strptime(date_str, date_format)
-  diff = datetime.now() - date_obj
-  days, seconds = diff.days, diff.seconds
-  hours = days * 24 + seconds
-  row['AGE'] = hours
+  row['AGE'] = int(row['Duration (minutes)'])
   return row
+def assignDate(row):
+  date_str = row['Created At']
+  date_format = '%d-%m-%Y %I:%M:%S %p'
+  if (pd.isnull(row['Created At'])):
+    return date_str
+  else : 
+    date_obj = datetime.strptime(date_str, date_format)
+    return date_obj.strftime('%m/%d/%Y')
+def assignTime(row):
+  date_str = row['Created At']
+  date_format = '%d-%m-%Y %I:%M:%S %p'
+  if (pd.isnull(row['Created At'])):
+    return date_str 
+  else : 
+    date_obj = datetime.strptime(date_str, date_format)
+    return date_obj.strftime('%H:%M:%S')
 
 
 def process_file(event):
@@ -154,7 +166,7 @@ def process_file(event):
       pn.state.notifications.error('Inactive file missing.', duration=3000)
       return
     outOfService = pd.read_excel(BytesIO(fileInput1.value), skiprows=5)
-    current = pd.read_excel(BytesIO(fileInput2.value),  usecols="A,G,H,I,L,J", skiprows=2)
+    current = pd.read_excel(BytesIO(fileInput2.value),  usecols="A,F,G,H,I,L,J")
     inactive = pd.read_excel(BytesIO(fileInput3.value))
     current = current.apply(take_action_code, axis=1)
     current = current.apply(assign_new_col, axis=1)
@@ -186,8 +198,10 @@ def process_file(event):
 
     creationList['Status Code'] = creationList.apply(assignStatusCode, axis=1)
     creationList.rename(columns = {'Started at':'Created At'}, inplace = True)
+    creationList['DATE'] = creationList.apply(assignDate, axis=1)
+    creationList['TIME'] = creationList.apply(assignTime, axis=1)
     creationList.rename(columns = {'Fault':'HP fault'}, inplace = True)
-    creationList = creationList[['ATM ID', 'Action Code Updated', 'Status Code', 'Created At','AGE','HP fault']]
+    creationList = creationList[['ATM ID', 'Action Code Updated', 'Status Code', 'Created At','AGE','HP fault', 'DATE', 'TIME']]
     creationList.set_index('ATM ID', inplace=True)
     creationTable.value = creationList
 
@@ -198,12 +212,11 @@ def process_file(event):
     print("here")
     closureListMergeOutOfService = pd.merge(current, explodedOutOfService, on=['ATM ID'], how="left", indicator='ExistIn')
     closureListOutOfService = closureListMergeOutOfService[closureListMergeOutOfService['ExistIn'] == 'left_only']
-    print("here 2")
     closureListMergeInactive = pd.merge(closureListOutOfService, inactive, on=['ATM ID'], how="left", indicator='ExistForInactive')
     closureListInactive = closureListMergeInactive[closureListMergeInactive['ExistForInactive'] == 'left_only']
     closureList = closureListInactive
-    closureList = closureList[['ATM ID', 'ACTION_CODE', 'Status Code', 'TICKET KEY']]
-    closureList.set_index('TICKET KEY', inplace=True)
+    closureList = closureList[['ATM ID', 'ACTION_CODE', 'Status Code', 'TICKET_KEY']]
+    closureList.set_index('TICKET_KEY', inplace=True)
     closure27 = closureList[(closureList['ACTION_CODE'] == 27)]
     closure4 = closureList[(closureList['ACTION_CODE'] == 4)]
     closureNot27And4 = closureList[(closureList['ACTION_CODE'] != 4) & (closureList['ACTION_CODE'] != 27)]
