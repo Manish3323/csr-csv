@@ -1,4 +1,4 @@
-importScripts("https://cdn.jsdelivr.net/pyodide/v0.22.1/full/pyodide.js");
+importScripts("https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js");
 
 function sendPatch(patch, buffers, msg_id) {
   self.postMessage({
@@ -16,9 +16,10 @@ async function startApplication() {
   console.log("Loaded!");
   await self.pyodide.loadPackage("micropip");
   const env_spec = [
+    "ssl",
     "https://cdn.holoviz.org/panel/0.14.4/dist/wheels/bokeh-2.4.3-py3-none-any.whl",
     "https://cdn.holoviz.org/panel/0.14.4/dist/wheels/panel-0.14.4-py3-none-any.whl",
-    "pyodide-http==0.1.0",
+    "pyodide-http==0.2.1",
     "openpyxl",
     "pandas",
     "numpy",
@@ -319,9 +320,11 @@ self.onmessage = async (event) => {
     self.postMessage({ type: "idle" });
   } else if (msg.type === "location") {
     self.pyodide.runPythonAsync(`
+
     import json
     from panel.io.state import state
     from panel.util import edit_readonly
+
     if state.location:
         loc_data = json.loads("""${msg.location}""")
         with edit_readonly(state.location):
