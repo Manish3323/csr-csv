@@ -110,6 +110,14 @@ closure27fileDownload = pn.widgets.FileDownload(filename=closure27FileName, call
 closure4fileDownload = pn.widgets.FileDownload(filename=closure4FileName, callback=lambda: get_csv(closure4Table), button_type="success")
 flmClosureFileDownload = pn.widgets.FileDownload(filename=flmClosureFileName, callback=lambda: get_csv(flmClosureTable), button_type="success")
 
+excludeFaults_S5 = [
+    "All_CASSETTES_FATAL_ADMIN_CASH(NCR)", "cash handler  fatal"
+]
+
+excludeFaults_S1 = [
+    "Cash Acceptor Fatal(NCR)"
+]
+
 excludeFaults = ['cassette  2  fatal','type 2 currency cassette low', 'cassette  3  fatal', 'type 3 currency cassette out', 'receipt printer  fatal', 'receipt paper out', 'COIN_DISPENSER_NOT_CONFIGURED (NCR)', 'cassette  1 not configured/Not Present', 'cassette  4 not configured/Not Present', 'type 1 currency cassette out', 'type 4 currency cassette out', 'receipt paper low']
 
 dataTables = ['closure27Table','closure4Table','flmClosureTable', 'creationTable']
@@ -134,7 +142,7 @@ def assignActionCode(row):
   return found['Action Code'].values
 
 def assign_new_col(row):
-  row['ATM ID'] = row['ATM_ID']
+  row['ATM ID'] = row['ID'] if 'ID' in row else row['ATM_ID']
   row['Status Code'] = row['STATUS_CODE_KEY']
   return row
 def assignAgeCol(row):
@@ -164,6 +172,21 @@ def assignTime(row):
     date_obj = datetime.strptime(date_str, date_format)
     return date_obj.strftime('%H:%M:%S')
 
+def update_faults(row):
+    atm_id = row['ATM ID']
+    
+    # Exclude faults based on ATM ID prefix
+    if atm_id.startswith('S5'):
+        exclude_list = excludeFaults + excludeFaults_S5
+    elif atm_id.startswith('S1'):
+        exclude_list = excludeFaults + excludeFaults_S1
+    else:
+        exclude_list = excludeFaults
+    
+    # Filter out rows with fault descriptions in the exclude list
+    if row['Fault'] in exclude_list:
+        return None  # Exclude this row by returning None
+    return row  # Keep the row otherwise    
 
 def process_file(event):
     # pn.state.notifications.clear()
@@ -191,6 +214,7 @@ def process_file(event):
     outOfService = outOfService.sort_values(by='Started at', ascending=False)
 
     outOfService['ATM ID'] = outOfService.apply(assignAtmIdNew, axis=1)
+    outOfService = outOfService.apply(update_faults, axis=1)
     inactive['ATM ID'] = inactive.apply(assignAtmId, axis=1)
 
     
