@@ -162,7 +162,24 @@ def assignDate(row):
     return date_str
   else : 
     date_obj = datetime.strptime(date_str, date_format)
-    return date_obj.strftime('%m/%d/%Y')
+    return date_obj.strftime('%d/%m/%Y')
+def assignDateCreationList(row):
+  date_str = row['start_date']
+  date_format = '%d-%m-%Y %I:%M:%S %p'
+  if (pd.isnull(row['start_date'])):
+    return date_str
+  else : 
+    date_obj = datetime.strptime(date_str, date_format)
+    return date_obj.strftime('%Y-%m-%d %I:%M:%S %p')
+
+def assignDateClosureList(row):
+  date_str = row['Created At']
+  date_format = '%m/%d/%Y %H:%M'
+  if (pd.isnull(row['Created At'])):
+    return date_str
+  else : 
+    date_obj = datetime.strptime(date_str, date_format)
+    return date_obj.strftime('%Y-%m-%d %I:%M:%S %p')
 def assignTime(row):
   date_str = row['Created At']
   date_format = '%d-%m-%Y %I:%M:%S %p'
@@ -242,9 +259,12 @@ def process_file(event):
     creationList['DATE'] = creationList.apply(assignDate, axis=1)
     creationList['TIME'] = creationList.apply(assignTime, axis=1)
     creationList.rename(columns = {'Fault':'HP fault'}, inplace = True)
-    creationList = creationList[['ATM ID', 'Action Code Updated', 'Status Code', 'Created At','AGE','HP fault', 'DATE', 'TIME']]
     creationList = creationList[~creationList['HP fault'].isin(excludeFaults)]
-    creationList.set_index('ATM ID', inplace=True)
+    creationList = creationList[['ATM ID', 'Status Code', 'Created At']]
+    creationList.rename(columns = {'ATM ID':'device_id', 'Status Code': 'fault_id','Created At':'start_date' }, inplace = True)
+    creationList.insert(2, 'comment', np.nan)
+    creationList['start_date'] = creationList.apply(assignDateCreationList, axis=1)
+    creationList.set_index('device_id', inplace=True)
     creationTable.value = creationList
 
     
@@ -267,6 +287,15 @@ def process_file(event):
     closureNot27And4['Created At'] = datenow
     closure27Table.value = closure27
     closure4Table.value = closure4
+    closureNot27And4['Created At'] = closureNot27And4.apply(assignDateClosureList, axis=1)
+    closureNot27And4.rename(columns = {'ATM ID':'device_id', 'Status Code': 'fault_id','Created At':'end_date', 'TICKET_KEY': 'incident_id' }, inplace = True)
+    closureNot27And4.insert(2, 'shared_comment', np.nan)
+    closureNot27And4.insert(3, 'confidential_comment', np.nan)
+    closureNot27And4.insert(4, 'start_date', np.nan)
+    closureNot27And4['end_date_status'] = 'enable'
+    closureNot27And4 = closureNot27And4[['device_id', 'fault_id','shared_comment', 'confidential_comment', 'start_date', 'end_date', 'end_date_status']]
+    closureNot27And4.set_index('device_id', inplace=True)
+    # closureList = closureList[['ATM ID', 'ACTION_CODE', 'Status Code', 'TICKET_KEY']]
     flmClosureTable.value = closureNot27And4
 
 pd.options.mode.chained_assignment = None
