@@ -126,18 +126,23 @@ vanilla = pn.template.VanillaTemplate(title='CSV files')
 
 def assignAtmId(df):
   return df['TERMINAL ID'][3:]
-
+def assignOriginalId(df):
+  return df['Terminal ID']
 def assignAtmIdNew(df):
   return df['Terminal ID'][3:]
 
 def assignStatusCode(row):
   if(~np.isnan(row['Action Code Updated'])):
+    if(row['Fault'] is None):
+      return -999
     found = faultDist[(row['Action Code Updated'] == faultDist['Action Code']) & (faultDist['ESQ/Inactive Problem Description'] == row['Fault'].strip())]
     if(len(found) > 0):
       return found['Status Code'].values[0]
   return -999
 
 def assignActionCode(row):
+  if(row['Fault'] is None):
+    return -999
   found = faultDist[faultDist['ESQ/Inactive Problem Description'] == row['Fault'].strip()]
   return found['Action Code'].values
 
@@ -190,7 +195,7 @@ def assignTime(row):
     return date_obj.strftime('%H:%M:%S')
 
 def update_faults(row):
-    atm_id = row['ATM ID']
+    atm_id = row['original_terminal_id']
     
     # Exclude faults based on ATM ID prefix
     if atm_id.startswith('S5'):
@@ -230,6 +235,7 @@ def process_file(event):
     outOfService = outOfService.apply(assignAgeCol, axis=1)
     outOfService = outOfService.sort_values(by='Started at', ascending=False)
 
+    outOfService['original_terminal_id'] = outOfService.apply(assignOriginalId, axis=1)
     outOfService['ATM ID'] = outOfService.apply(assignAtmIdNew, axis=1)
     outOfService = outOfService.apply(update_faults, axis=1)
     inactive['ATM ID'] = inactive.apply(assignAtmId, axis=1)
@@ -264,6 +270,7 @@ def process_file(event):
     creationList.rename(columns = {'ATM ID':'device_id', 'Status Code': 'fault_id','Created At':'start_date' }, inplace = True)
     creationList.insert(2, 'comment', np.nan)
     creationList['start_date'] = creationList.apply(assignDateCreationList, axis=1)
+    creationList.dropna(subset=['device_id'],inplace=True)
     creationList.set_index('device_id', inplace=True)
     creationTable.value = creationList
 
