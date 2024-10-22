@@ -207,7 +207,7 @@ def update_faults(row):
     
     # Filter out rows with fault descriptions in the exclude list
     if row['Fault'] in exclude_list:
-        return None  # Exclude this row by returning None
+        row['Fault'] = np.nan
     return row  # Keep the row otherwise    
 
 def process_file(event):
@@ -238,6 +238,7 @@ def process_file(event):
     outOfService['original_terminal_id'] = outOfService.apply(assignOriginalId, axis=1)
     outOfService['ATM ID'] = outOfService.apply(assignAtmIdNew, axis=1)
     outOfService = outOfService.apply(update_faults, axis=1)
+    outOfService = outOfService.dropna(subset=['Fault'])
     inactive['ATM ID'] = inactive.apply(assignAtmId, axis=1)
 
     
