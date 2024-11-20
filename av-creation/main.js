@@ -125,11 +125,11 @@ downloadButtons = ['closure27fileDownload', 'closure4fileDownload','flmClosureFi
 vanilla = pn.template.VanillaTemplate(title='CSV files')
 
 def assignAtmId(df):
-  return df['TERMINAL ID'][3:]
+  return df['TERMINAL ID']
 def assignOriginalId(df):
   return df['Terminal ID']
 def assignAtmIdNew(df):
-  return df['Terminal ID'][3:]
+  return df['Terminal ID']
 
 def assignStatusCode(row):
   if(~np.isnan(row['Action Code Updated'])):
