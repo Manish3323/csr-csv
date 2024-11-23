@@ -70,10 +70,10 @@ pd.options.mode.chained_assignment = None
 
 
 
-Descriptions = ["CashOut_SBI","receipt printer  fatal","receipt paper out","receipt paper low","down - communication failure","Cash Acceptor Fatal(NCR)","magnetic card read/write  fatal","encryptor  fatal","CLOSE","supervisor mode alarm is on (NCR)","Reject bin overfill","All_CASSETTES_FATAL_SBI(NCR)","All_CASSETTES_FATAL_ADMIN_CASH(NCR)","cash handler  fatal","Close No Other Fault(NCR)"]
-actionCodes = [15,6,6,6,34,26,8,8,34,7,47,26,31,26,34]
-statusCodes = ["COB","01700","01709","01770","00459","01188","00479","02200","00460","02603","01570","00298","00294","00CDF","00460"]
-GasperStatusDescription = [ "Cash Out - Bank reason", "Recpt prntr:Fatal", "Paper Out", "recpt prntr: Paper low", "ATM has been DISCONNECTED", "Cash Acceptor Faulted Fatal Error", "ATM Shutdown -Card reader faults", "Encryptor: Error", "Atm has been marked Down", "Mode switch moved to Supervisor", "Reject Bin Overfill", "ALL Cassettes are Faulted", "ALL Cassettes are Cash Out with Cash greater 25000", "Cash Handler Fatal-OBF", "Atm has been marked Down" ]
+Descriptions = ["CashOut_SBI","receipt printer  fatal","receipt paper out","receipt paper low","down - communication failure","Cash Acceptor Fatal(NCR)","magnetic card read/write  fatal","encryptor  fatal","CLOSE","supervisor mode alarm is on (NCR)","Reject bin overfill","All_CASSETTES_FATAL_SBI(NCR)","All_CASSETTES_FATAL_ADMIN_CASH(NCR)","cash handler  fatal","Load Aborted"]
+actionCodes = [15,6,6,6,34,26,8,8,34,7,47,26,31,26,35]
+statusCodes = ["COB","01700","01709","01770","00459","01188","00479","02200","00460","02603","01570","00298","00294","00CDF","00501"]
+GasperStatusDescription = [ "Cash Out - Bank reason", "Recpt prntr:Fatal", "Paper Out", "recpt prntr: Paper low", "ATM has been DISCONNECTED", "Cash Acceptor Faulted Fatal Error", "Card Reader Fatal-OBF", "Encryptor fatal-OBF", "Atm has been marked Down", "Mode switch moved to Supervisor", "Reject Bin Overfill", "ALL Cassettes are Faulted", "ALL Cassettes are Cash Out with Cash greater 25000", "Cash Handler Fatal-OBF", "Atm has been marked Down" ]
 data = {'ESQ/Inactive Problem Description': Descriptions, 'Action Code': actionCodes, 'Status Code': statusCodes, 'Gasper Status Description': GasperStatusDescription}
 
 faultDist = pd.DataFrame(data)
@@ -242,8 +242,8 @@ def process_file(event):
     inactive['ATM ID'] = inactive.apply(assignAtmId, axis=1)
 
     
-    csrOnly27And4 = current[(current['ACTION_CODE'] == 27) | (current['ACTION_CODE'] == 4)]
-    csrWithout27And4 = current[(current['ACTION_CODE'] != 27) & (current['ACTION_CODE'] != 4)]
+    csrOnly27And4 = current[(current['ACTION_CODE'] == 27) | (current['ACTION_CODE'] == 4) | (current['ACTION_CODE'] == 35)]
+    csrWithout27And4 = current[(current['ACTION_CODE'] != 27) & (current['ACTION_CODE'] != 4) & (current['ACTION_CODE'] != 35)]
     outOfServiceOnly27and4 = outOfService.join(csrOnly27And4.set_index('ATM ID'), on='ATM ID', how="inner")
     outOfServiceWithout27and4 = outOfService[~outOfService['ATM ID'].isin(outOfServiceOnly27and4['ATM ID'])]
     outOfServiceWithout27and4['Action Code Updated'] = outOfServiceWithout27and4.apply(assignActionCode, axis=1)
@@ -288,7 +288,7 @@ def process_file(event):
     closureList.set_index('TICKET_KEY', inplace=True)
     closure27 = closureList[(closureList['ACTION_CODE'] == 27)]
     closure4 = closureList[(closureList['ACTION_CODE'] == 4)]
-    closureNot27And4 = closureList[(closureList['ACTION_CODE'] != 4) & (closureList['ACTION_CODE'] != 27)]
+    closureNot27And4 = closureList[(closureList['ACTION_CODE'] != 4) & (closureList['ACTION_CODE'] != 27) & (closureList['ACTION_CODE'] != 35)]
     closureNot27And4 = closureNot27And4[(closureNot27And4['ACTION_CODE'] != 6) & (closureNot27And4['ACTION_CODE'] != 18)]
     closure27['Created At'] = datenow
     closure4['Created At'] = datenow
@@ -303,7 +303,6 @@ def process_file(event):
     closureNot27And4['end_date_status'] = 'enable'
     closureNot27And4 = closureNot27And4[['device_id', 'fault_id','shared_comment', 'confidential_comment', 'start_date', 'end_date', 'end_date_status']]
     closureNot27And4.set_index('device_id', inplace=True)
-    # closureList = closureList[['ATM ID', 'ACTION_CODE', 'Status Code', 'TICKET_KEY']]
     flmClosureTable.value = closureNot27And4
 
 pd.options.mode.chained_assignment = None
