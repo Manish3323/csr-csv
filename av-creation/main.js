@@ -83,10 +83,10 @@ fileInput2 = pn.widgets.FileInput(accept='.xlsx,.xls')
 fileInput3 = pn.widgets.FileInput(accept='.xlsx,.xls')
 uploadButton = pn.widgets.Button(name='Process Files', button_type = 'primary')
 
-creationTable = pn.widgets.Tabulator(pagination='remote', page_size=5)
-closure27Table = pn.widgets.Tabulator(pagination='remote', page_size=5)
-closure4Table = pn.widgets.Tabulator(pagination='remote', page_size=5)
-flmClosureTable = pn.widgets.Tabulator(pagination='remote', page_size=5)
+creationTable = pn.widgets.Tabulator(pagination='remote', page_size=5, hidden_columns=["index"])
+closure27Table = pn.widgets.Tabulator(pagination='remote', page_size=5,hidden_columns=["index"])
+closure4Table = pn.widgets.Tabulator(pagination='remote', page_size=5, hidden_columns=["index"])
+flmClosureTable = pn.widgets.Tabulator(pagination='remote', page_size=5, hidden_columns=["index"])
 datenow = datetime.now().strftime('%m/%d/%Y %H:%M')
 
 creationFileName = f"creation-{datenow}.csv"
@@ -272,10 +272,12 @@ def process_file(event):
     creationList.insert(2, 'comment', np.nan)
     creationList['start_date'] = creationList.apply(assignDateCreationList, axis=1)
     creationList.dropna(subset=['device_id'],inplace=True)
-    creationList.set_index('device_id', inplace=True)
+    # creationList.set_index('device_id', inplace=True)
+    print("creationList")
+    print(creationList.columns.tolist())
     creationTable.value = creationList
 
-    
+
     ## closure part
     outOfService['Action Code Updated For Closure'] = outOfService.apply(assignActionCode, axis=1)
     explodedOutOfService = outOfService.explode('Action Code Updated For Closure')
@@ -285,7 +287,7 @@ def process_file(event):
     closureListInactive = closureListMergeInactive[closureListMergeInactive['ExistForInactive'] == 'left_only']
     closureList = closureListInactive
     closureList = closureList[['ATM ID', 'ACTION_CODE', 'Status Code', 'TICKET_KEY']]
-    closureList.set_index('TICKET_KEY', inplace=True)
+    # closureList.set_index('TICKET_KEY', inplace=True)
     closure27 = closureList[(closureList['ACTION_CODE'] == 27)]
     closure4 = closureList[(closureList['ACTION_CODE'] == 4)]
     closureNot27And4 = closureList[(closureList['ACTION_CODE'] != 4) & (closureList['ACTION_CODE'] != 27) & (closureList['ACTION_CODE'] != 35)]
@@ -296,13 +298,14 @@ def process_file(event):
     closure27Table.value = closure27
     closure4Table.value = closure4
     closureNot27And4['Created At'] = closureNot27And4.apply(assignDateClosureList, axis=1)
-    closureNot27And4.rename(columns = {'ATM ID':'device_id', 'Status Code': 'fault_id','Created At':'end_date', 'TICKET_KEY': 'incident_id' }, inplace = True)
+  
+    closureNot27And4.rename(columns = {'ATM ID':'device_id', 'Status Code': 'fault_id','Created At':'end_date'}, inplace = True)
     closureNot27And4.insert(2, 'shared_comment', np.nan)
     closureNot27And4.insert(3, 'confidential_comment', np.nan)
     closureNot27And4.insert(4, 'start_date', np.nan)
     closureNot27And4['end_date_status'] = 'enable'
-    closureNot27And4 = closureNot27And4[['device_id', 'fault_id','shared_comment', 'confidential_comment', 'start_date', 'end_date', 'end_date_status']]
-    closureNot27And4.set_index('device_id', inplace=True)
+    closureNot27And4 = closureNot27And4[['TICKET_KEY', 'device_id', 'fault_id','shared_comment', 'confidential_comment', 'start_date', 'end_date', 'end_date_status']]
+    # closureNot27And4.set_index('device_id', inplace=True)
     flmClosureTable.value = closureNot27And4
 
 pd.options.mode.chained_assignment = None
