@@ -135,7 +135,7 @@ def assignStatusCode(row):
   if(~np.isnan(row['Action Code Updated'])):
     if(row['Fault'] is None):
       return -999
-    found = faultDist[(row['Action Code Updated'] == faultDist['Action Code']) & (faultDist['ESQ/Inactive Problem Description'] == row['Fault'].strip())]
+    found = faultDist[(row['STATUS_CODE_DESCRIPTION'] == faultDist['Gasper Status Description']) & (row['Action Code Updated'] == faultDist['Action Code']) & (faultDist['ESQ/Inactive Problem Description'] == row['Fault'].strip())]
     if(len(found) > 0):
       return found['Status Code'].values[0]
   return -999
