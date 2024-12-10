@@ -70,10 +70,10 @@ pd.options.mode.chained_assignment = None
 
 
 
-Descriptions = ["CashOut_SBI","receipt printer  fatal","receipt paper out","receipt paper low","down - communication failure","Cash Acceptor Fatal(NCR)","magnetic card read/write  fatal","encryptor  fatal","CLOSE","supervisor mode alarm is on (NCR)","Reject bin overfill","All_CASSETTES_FATAL_SBI(NCR)","All_CASSETTES_FATAL_ADMIN_CASH(NCR)","cash handler  fatal","Load Aborted"]
-actionCodes = [15,6,6,6,34,26,8,8,34,7,47,26,31,26,35]
-statusCodes = ["COB","01700","01709","01770","00459","01188","00CRF","00EPF","00460","02603","01570","00298","00294","00CDF","00501"]
-GasperStatusDescription = [ "Cash Out - Bank reason", "Recpt prntr:Fatal", "Paper Out", "recpt prntr: Paper low", "ATM has been DISCONNECTED", "Cash Acceptor Faulted Fatal Error", "Card Reader Fatal-OBF", "Encryptor fatal-OBF", "Atm has been marked Down", "Mode switch moved to Supervisor", "Reject Bin Overfill", "ALL Cassettes are Faulted", "ALL Cassettes are Cash Out with Cash greater 25000", "Cash Handler Fatal-OBF", "Atm has been marked Down" ]
+Descriptions = ["CashOut_SBI","down - communication failure","Cash Acceptor Fatal(NCR)","magnetic card read/write  fatal","encryptor  fatal","supervisor mode alarm is on (NCR)","Reject bin overfill","All_CASSETTES_FATAL_SBI(NCR)","All_CASSETTES_FATAL_ADMIN_CASH(NCR)","cash handler  fatal","Close No Other Fault(NCR)"]
+actionCodes = [15,34,26,8,8,7,47,26,31,26,35]
+statusCodes = ["COB","00459","01188","00CRF","00EPF","02603","01570","00298","00294","00CDF","00501"]
+GasperStatusDescription = [ "Cash Out - Bank reason", "ATM has been DISCONNECTED", "Cash Acceptor Faulted Fatal Error", "Card Reader Fatal-OBF", "Encryptor fatal-OBF", "Mode switch moved to Supervisor", "Reject Bin Overfill", "ALL Cassettes are Faulted", "ALL Cassettes are Cash Out with Cash greater 25000", "Cash Handler Fatal-OBF", "Load Aborted" ]
 data = {'ESQ/Inactive Problem Description': Descriptions, 'Action Code': actionCodes, 'Status Code': statusCodes, 'Gasper Status Description': GasperStatusDescription}
 
 faultDist = pd.DataFrame(data)
@@ -295,6 +295,8 @@ def process_file(event):
     closure27['Created At'] = datenow
     closure4['Created At'] = datenow
     closureNot27And4['Created At'] = datenow
+    closure27['Location'] = ''
+    closure4['Location'] = ''
     closure27Table.value = closure27
     closure4Table.value = closure4
     closureNot27And4['Created At'] = closureNot27And4.apply(assignDateClosureList, axis=1)
