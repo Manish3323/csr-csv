@@ -291,7 +291,7 @@ def process_file(event):
     # closureList.set_index('TICKET_KEY', inplace=True)
     closure27 = closureList[(closureList['ACTION_CODE'] == 27)]
     closure4 = closureList[(closureList['ACTION_CODE'] == 4)]
-    closureNot27And4 = closureList[(closureList['ACTION_CODE'] != 4) & (closureList['ACTION_CODE'] != 27) & (closureList['ACTION_CODE'] != 35)]
+    closureNot27And4 = closureList[(closureList['ACTION_CODE'] != 4) & (closureList['ACTION_CODE'] != 27)]
     closureNot27And4 = closureNot27And4[(closureNot27And4['ACTION_CODE'] != 6) & (closureNot27And4['ACTION_CODE'] != 18)]
     closure27['Created At'] = datenow
     closure4['Created At'] = datenow
