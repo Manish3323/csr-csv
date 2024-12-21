@@ -242,8 +242,8 @@ def process_file(event):
     inactive['ATM ID'] = inactive.apply(assignAtmId, axis=1)
 
     
-    csrOnly27And4 = current[(current['ACTION_CODE'] == 27) | (current['ACTION_CODE'] == 4) | (current['ACTION_CODE'] == 35)]
-    csrWithout27And4 = current[(current['ACTION_CODE'] != 27) & (current['ACTION_CODE'] != 4) & (current['ACTION_CODE'] != 35)]
+    csrOnly27And4 = current[(current['ACTION_CODE'] == 27) | (current['ACTION_CODE'] == 4)]
+    csrWithout27And4 = current[(current['ACTION_CODE'] != 27) & (current['ACTION_CODE'] != 4)]
     outOfServiceOnly27and4 = outOfService.join(csrOnly27And4.set_index('ATM ID'), on='ATM ID', how="inner")
     outOfServiceWithout27and4 = outOfService[~outOfService['ATM ID'].isin(outOfServiceOnly27and4['ATM ID'])]
     outOfServiceWithout27and4['Action Code Updated'] = outOfServiceWithout27and4.apply(assignActionCode, axis=1)
