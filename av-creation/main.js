@@ -71,7 +71,7 @@ pd.options.mode.chained_assignment = None
 
 
 Descriptions = ["CashOut_SBI","down - communication failure","Cash Acceptor Fatal(NCR)","magnetic card read/write  fatal","encryptor  fatal","supervisor mode alarm is on (NCR)","Reject bin overfill","All_CASSETTES_FATAL_SBI(NCR)","All_CASSETTES_FATAL_ADMIN_CASH(NCR)","cash handler  fatal","Close No Other Fault(NCR)"]
-actionCodes = [15,34,26,8,8,7,47,26,31,26,35]
+actionCodes = [15,34,26,8,10,7,47,26,31,26,35]
 statusCodes = ["COB","00459","01188","00CRF","00EPF","02603","01570","00298","00294","00CDF","00501"]
 GasperStatusDescription = [ "Cash Out - Bank reason", "ATM has been DISCONNECTED", "Cash Acceptor Faulted Fatal Error", "Card Reader Fatal-OBF", "Encryptor fatal-OBF", "Mode switch moved to Supervisor", "Reject Bin Overfill", "ALL Cassettes are Faulted", "ALL Cassettes are Cash Out with Cash greater 25000", "Cash Handler Fatal-OBF", "Load Aborted" ]
 data = {'ESQ/Inactive Problem Description': Descriptions, 'Action Code': actionCodes, 'Status Code': statusCodes, 'Gasper Status Description': GasperStatusDescription}
