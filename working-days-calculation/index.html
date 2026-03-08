@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Working Days Downtime Calculator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ── */
+    .app-header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 18px 32px;
+    }
+    .app-header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.3px; }
+    .app-header p  { font-size: 0.8rem; color: #a0aec0; margin-top: 3px; }
+
+    .container { max-width: 1140px; margin: 0 auto; padding: 24px 24px 60px; }
+
+    /* ── Card ── */
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 18px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      color: #718096;
+      margin-bottom: 14px;
+    }
+
+    /* ── Grid ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    /* ── Form fields ── */
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 0.8rem; font-weight: 600; color: #4a5568; }
+    .field small  { font-size: 0.72rem; color: #a0aec0; }
+
+    .file-drop {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border: 1.5px dashed #cbd5e0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      background: #fafafa;
+    }
+    .file-drop:hover { border-color: #667eea; background: #f0f4ff; }
+    .file-drop.has-file { border-color: #48bb78; background: #f0fff4; }
+    .file-drop input[type="file"] { display: none; }
+    .file-drop-icon { font-size: 1.2rem; }
+    .file-drop-text { font-size: 0.8rem; color: #718096; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-drop.has-file .file-drop-text { color: #276749; font-weight: 500; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 0; margin-bottom: 18px; border-bottom: 2px solid #e2e8f0; }
+    .tab-btn {
+      padding: 10px 22px;
+      border: none;
+      background: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #718096;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: color .15s;
+    }
+    .tab-btn:hover { color: #4a5568; }
+    .tab-btn.active { color: #667eea; border-bottom-color: #667eea; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 20px;
+      border: none;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .btn-primary { background: #667eea; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #5a67d8; }
+    .btn-success { background: #48bb78; color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #38a169; }
+
+    /* ── Progress ── */
+    .progress-wrap { margin-top: 14px; display: none; }
+    .progress-bar { height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 3px; transition: width .25s ease; width: 0%; }
+    .progress-label { font-size: 0.75rem; color: #718096; margin-top: 5px; }
+
+    /* ── Alert ── */
+    .alert { border-radius: 7px; padding: 10px 14px; font-size: 0.8rem; margin-top: 12px; display: none; }
+    .alert-error { background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }
+    .alert-warn  { background: #fffbeb; color: #744210; border: 1px solid #fbd38d; }
+
+    /* ── Results ── */
+    .result-wrap { margin-top: 18px; display: none; }
+    .result-meta { font-size: 0.8rem; color: #718096; margin-bottom: 10px; }
+    .result-meta strong { color: #2d3748; }
+
+    .table-outer { overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.76rem; white-space: nowrap; }
+    thead th {
+      background: #f7fafc;
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 700;
+      color: #4a5568;
+      border-bottom: 1px solid #e2e8f0;
+      position: sticky;
+      top: 0;
+    }
+    tbody td { padding: 6px 12px; border-bottom: 1px solid #f0f0f0; color: #2d3748; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #f7fafc; }
+
+    /* Highlight calculated columns */
+    .calc-col { background: #fffde7 !important; }
+    tbody tr:hover .calc-col { background: #fff9c4 !important; }
+
+    .result-actions { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+
+    /* ── Badges ── */
+    .badge {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 99px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      vertical-align: middle;
+    }
+    .badge-blue { background: #ebf4ff; color: #3182ce; }
+    .badge-gray { background: #edf2f7; color: #718096; }
+
+    .divider { height: 1px; background: #e2e8f0; margin: 18px 0; }
+
+    .info-box {
+      background: #ebf8ff;
+      border: 1px solid #bee3f8;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.78rem;
+      color: #2b6cb0;
+      margin-bottom: 16px;
+    }
+    .info-box ul { padding-left: 16px; margin-top: 4px; }
+    .info-box li { margin-top: 3px; }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>Working Days Downtime Calculator</h1>
+  <p>ATM downtime analysis — excludes off-banking hours, weekends &amp; public holidays</p>
+</header>
+
+<div class="container">
+
+  <!-- ── Common Reference Files ── -->
+  <div class="card">
+    <div class="card-title">Common Reference Files <span class="badge badge-gray">required for both pipelines</span></div>
+    <div class="grid-2">
+
+      <div class="field">
+        <label>DB Master File</label>
+        <div class="file-drop" id="dropDB" onclick="openPicker('fileDB')">
+          <span class="file-drop-icon">🗄️</span>
+          <span class="file-drop-text" id="labelDB">Click to select .xlsx file</span>
+          <input type="file" id="fileDB" accept=".xlsx,.xls" onchange="filePicked('fileDB','dropDB','labelDB')">
+        </div>
+        <small>Must contain a <strong>DB</strong> sheet with <em>TERMINAL ID</em> and <em>STATENAME</em> columns</small>
+      </div>
+
+      <div class="field">
+        <label>Holiday Calendar File</label>
+        <div class="file-drop" id="dropCal" onclick="openPicker('fileCal')">
+          <span class="file-drop-icon">📅</span>
+          <span class="file-drop-text" id="labelCal">Click to select .xlsx file</span>
+          <input type="file" id="fileCal" accept=".xlsx,.xls" onchange="filePicked('fileCal','dropCal','labelCal')">
+        </div>
+        <small>Sheet with <em>DATE</em>, <em>STATE</em>, <em>HOLIDAY</em> columns (e.g. Book12.xlsx → Calender sheet)</small>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Tabs ── -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('p1')">Pipeline 1 — Fault Browser</button>
+    <button class="tab-btn"        onclick="switchTab('p2')">Pipeline 2 — Own Fault File</button>
+  </div>
+
+  <!-- ══════════════ PIPELINE 1 ══════════════ -->
+  <div id="panel-p1" class="tab-panel active">
+    <div class="card">
+      <div class="card-title">Pipeline 1 — Fault Browser Files</div>
+
+      <div class="info-box">
+        <strong>How it works:</strong>
+        <ul>
+          <li>Select one or more Fault Browser Excel exports (the 5-row header is auto-skipped)</li>
+          <li>Files are merged and sorted by <em>Started at</em> timestamp</li>
+          <li>ATM state is looked up from DB Master using Terminal ID</li>
+          <li>Downtime is split into: Post Banking Hours / Weekend / Public Holiday / Actual</li>
+        </ul>
+      </div>
+
+      <div class="field">
+        <label>Fault Browser Excel Files <span class="badge badge-blue">multiple allowed</span></label>
+        <div class="file-drop" id="dropFB" onclick="openPicker('fileFB')">
+          <span class="file-drop-icon">📂</span>
+          <span class="file-drop-text" id="labelFB">Click to select one or more .xlsx files</span>
+          <input type="file" id="fileFB" accept=".xlsx,.xls" multiple onchange="filePicked('fileFB','dropFB','labelFB')">
+        </div>
+        <small>Expected columns: <em>Terminal ID, Fault, Started at, Ended at, Duration (minutes)</em></small>
+      </div>
+
+      <div style="margin-top:16px;">
+        <button class="btn btn-primary" id="btnP1" onclick="runPipeline(1)">
+          ▶ Process Pipeline 1
+        </button>
+      </div>
+
+      <div class="progress-wrap" id="progressP1">
+        <div class="progress-bar"><div class="progress-fill" id="fillP1"></div></div>
+        <div class="progress-label" id="labelP1">Starting…</div>
+      </div>
+
+      <div class="alert alert-error" id="errP1"></div>
+      <div class="alert alert-warn"  id="warnP1"></div>
+
+      <div class="result-wrap" id="resultP1">
+        <div class="divider"></div>
+        <div class="result-meta" id="metaP1"></div>
+        <div class="table-outer" id="tableP1"></div>
+        <div class="result-actions">
+          <button class="btn btn-success" onclick="downloadCSV(1)">⬇ Download CSV</button>
+          <span id="dlMetaP1" style="font-size:.75rem;color:#718096;"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ PIPELINE 2 ══════════════ -->
+  <div id="panel-p2" class="tab-panel">
+    <div class="card">
+      <div class="card-title">Pipeline 2 — Own Fault File</div>
+
+      <div class="info-box">
+        <strong>How it works:</strong>
+        <ul>
+          <li>Upload your own fault data file (e.g. Book15.xlsx → <em>Sheet1</em> is used)</li>
+          <li>State is taken from the file directly (or looked up from DB Master if missing)</li>
+          <li>No merging — calculated columns are appended to the original data</li>
+        </ul>
+      </div>
+
+      <div class="field">
+        <label>Fault Data File</label>
+        <div class="file-drop" id="dropOwn" onclick="openPicker('fileOwn')">
+          <span class="file-drop-icon">📋</span>
+          <span class="file-drop-text" id="labelOwn">Click to select .xlsx file</span>
+          <input type="file" id="fileOwn" accept=".xlsx,.xls" onchange="filePicked('fileOwn','dropOwn','labelOwn')">
+        </div>
+        <small>
+          Expected columns: <em>ATM_ID / TERMINAL ID, STATE, START_DATE, START_TIME, END_DATE, END_TIME</em><br>
+          Also supports single combined datetime columns (e.g. <em>Started at, Ended at</em>)
+        </small>
+      </div>
+
+      <div style="margin-top:16px;">
+        <button class="btn btn-primary" id="btnP2" onclick="runPipeline(2)">
+          ▶ Process Pipeline 2
+        </button>
+      </div>
+
+      <div class="progress-wrap" id="progressP2">
+        <div class="progress-bar"><div class="progress-fill" id="fillP2"></div></div>
+        <div class="progress-label" id="labelP2">Starting…</div>
+      </div>
+
+      <div class="alert alert-error" id="errP2"></div>
+      <div class="alert alert-warn"  id="warnP2"></div>
+
+      <div class="result-wrap" id="resultP2">
+        <div class="divider"></div>
+        <div class="result-meta" id="metaP2"></div>
+        <div class="table-outer" id="tableP2"></div>
+        <div class="result-actions">
+          <button class="btn btn-success" onclick="downloadCSV(2)">⬇ Download CSV</button>
+          <span id="dlMetaP2" style="font-size:.75rem;color:#718096;"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+// ─── Calculated column names (used for highlighting) ─────────────────────────
+const CALC_COLS = new Set([
+  'Post Banking Hours (00-09 & 18-24)',
+  'Weekend Holiday Hours',
+  'Public Holiday Hours',
+  'Actual Downtime (hrs)',
+  'Total Downtime (hrs)',
+]);
+
+// ─── State ────────────────────────────────────────────────────────────────────
+const csvStore  = {};   // csvStore[1|2] = CSV string
+const workers   = {};   // workers[1|2]  = Worker instance
+
+// ─── Tab switching ────────────────────────────────────────────────────────────
+function switchTab(id) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', ['p1', 'p2'][i] === id);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+}
+
+// ─── File picker helpers ──────────────────────────────────────────────────────
+function openPicker(inputId) {
+  document.getElementById(inputId).click();
+}
+
+function filePicked(inputId, dropId, labelId) {
+  const input = document.getElementById(inputId);
+  const drop  = document.getElementById(dropId);
+  const label = document.getElementById(labelId);
+  if (input.files.length === 0) return;
+  if (input.files.length === 1) {
+    label.textContent = input.files[0].name;
+  } else {
+    label.textContent = `${input.files.length} files selected`;
+  }
+  drop.classList.add('has-file');
+}
+
+// ─── Read files to ArrayBuffer ────────────────────────────────────────────────
+function readFileAB(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload  = e => resolve(e.target.result);
+    fr.onerror = reject;
+    fr.readAsArrayBuffer(file);
+  });
+}
+
+async function readAllFiles(fileInput) {
+  const out = [];
+  for (const f of fileInput.files) {
+    out.push({ name: f.name, data: await readFileAB(f) });
+  }
+  return out;
+}
+
+// ─── Main pipeline runner ─────────────────────────────────────────────────────
+async function runPipeline(n) {
+  const dbInput  = document.getElementById('fileDB');
+  const calInput = document.getElementById('fileCal');
+
+  if (!dbInput.files.length)  return showErr(n, 'Please select a DB Master file.');
+  if (!calInput.files.length) return showErr(n, 'Please select a Holiday Calendar file.');
+
+  clearMsg(n);
+  setLoading(n, true);
+  hideResult(n);
+
+  try {
+    // Re-read reference files fresh each run (keeps originals intact for reuse)
+    const dbData  = await readFileAB(dbInput.files[0]);
+    const calData = await readFileAB(calInput.files[0]);
+
+    let msg;
+    if (n === 1) {
+      const fbInput = document.getElementById('fileFB');
+      if (!fbInput.files.length) { setLoading(n, false); return showErr(n, 'Please select at least one Fault Browser file.'); }
+      const files = await readAllFiles(fbInput);
+      msg = { type: 'pipeline1', files, dbMaster: dbData, calendar: calData };
+    } else {
+      const ownInput = document.getElementById('fileOwn');
+      if (!ownInput.files.length) { setLoading(n, false); return showErr(n, 'Please select a fault data file.'); }
+      const fileData = await readFileAB(ownInput.files[0]);
+      msg = { type: 'pipeline2', file: fileData, dbMaster: dbData, calendar: calData };
+    }
+
+    // Terminate any previous worker for this pipeline
+    if (workers[n]) workers[n].terminate();
+
+    const worker = new Worker('worker.js');
+    workers[n] = worker;
+
+    worker.onmessage = e => handleMsg(n, e.data);
+    worker.onerror   = e => { setLoading(n, false); showErr(n, e.message || 'Worker error'); };
+
+    // Transfer large ArrayBuffers to avoid copying; DBs are smaller but still transfer all
+    const transferList = [];
+    if (msg.dbMaster) transferList.push(msg.dbMaster);
+    if (msg.calendar) transferList.push(msg.calendar);
+    if (msg.file)     transferList.push(msg.file);
+    if (msg.files)    msg.files.forEach(f => transferList.push(f.data));
+
+    worker.postMessage(msg, transferList);
+
+  } catch (err) {
+    setLoading(n, false);
+    showErr(n, err.message || String(err));
+  }
+}
+
+// ─── Worker message handler ───────────────────────────────────────────────────
+function handleMsg(n, data) {
+  if (data.type === 'progress') {
+    setProgress(n, data.pct, data.msg);
+  } else if (data.type === 'done') {
+    setLoading(n, false);
+    csvStore[n] = data.csv;
+    showResult(n, data.preview, data.total);
+  } else if (data.type === 'error') {
+    setLoading(n, false);
+    showErr(n, data.msg);
+  } else if (data.type === 'warn') {
+    showWarn(n, data.msg);
+  }
+}
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function setLoading(n, on) {
+  document.getElementById(`btnP${n}`).disabled = on;
+  const pw = document.getElementById(`progressP${n}`);
+  pw.style.display = on ? 'block' : 'none';
+  if (!on) document.getElementById(`fillP${n}`).style.width = '0%';
+}
+
+function setProgress(n, pct, msg) {
+  document.getElementById(`fillP${n}`).style.width = pct + '%';
+  document.getElementById(`labelP${n}`).textContent = msg;
+}
+
+function showErr(n, msg) {
+  const el = document.getElementById(`errP${n}`);
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function showWarn(n, msg) {
+  const el = document.getElementById(`warnP${n}`);
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function clearMsg(n) {
+  ['err', 'warn'].forEach(t => {
+    const el = document.getElementById(`${t}P${n}`);
+    el.textContent = '';
+    el.style.display = 'none';
+  });
+}
+
+function hideResult(n) {
+  document.getElementById(`resultP${n}`).style.display = 'none';
+}
+
+function showResult(n, preview, total) {
+  const wrap = document.getElementById(`resultP${n}`);
+  wrap.style.display = 'block';
+
+  document.getElementById(`metaP${n}`).innerHTML =
+    `<strong>${total.toLocaleString()}</strong> records processed. Preview: first ${Math.min(20, preview.length)} rows.`;
+
+  document.getElementById(`dlMetaP${n}`).textContent =
+    `CSV ready (${total.toLocaleString()} rows)`;
+
+  if (!preview.length) {
+    document.getElementById(`tableP${n}`).innerHTML = '<p style="padding:12px;color:#718096;font-size:.8rem;">No rows returned.</p>';
+    return;
+  }
+
+  const cols = Object.keys(preview[0]);
+  let html = '<table><thead><tr>';
+  cols.forEach(c => {
+    html += `<th${CALC_COLS.has(c) ? ' class="calc-col"' : ''}>${escHtml(c)}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+  preview.forEach(row => {
+    html += '<tr>';
+    cols.forEach(c => {
+      html += `<td${CALC_COLS.has(c) ? ' class="calc-col"' : ''}>${escHtml(row[c])}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById(`tableP${n}`).innerHTML = html;
+}
+
+function escHtml(v) {
+  if (v == null) return '';
+  return String(v)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// ─── CSV download ─────────────────────────────────────────────────────────────
+function downloadCSV(n) {
+  const csv = csvStore[n];
+  if (!csv) return;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `downtime-pipeline${n}-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
