@@ -341,11 +341,11 @@ function processDuration(fileAb) {
     const durHrs = (endDt.getTime() - effectiveStart.getTime()) / 3_600_000;
 
     if (iDuration >= 0 && colNames[iDuration]) out[colNames[iDuration]] = fmtDuration(durHrs);
-    if (iPostBank >= 0 && colNames[iPostBank]) out[colNames[iPostBank]] = calc.postBanking;
-    if (iWeekend  >= 0 && colNames[iWeekend])  out[colNames[iWeekend]]  = calc.weekend;
-    if (iPubHol   >= 0 && colNames[iPubHol])   out[colNames[iPubHol]]   = calc.publicHol;
-    if (iActual   >= 0 && colNames[iActual])   out[colNames[iActual]]   = calc.actual;
-    if (iTotal    >= 0 && colNames[iTotal])    out[colNames[iTotal]]    = calc.total;
+    if (iPostBank >= 0 && colNames[iPostBank]) out[colNames[iPostBank]] = fmtDuration(calc.postBanking);
+    if (iWeekend  >= 0 && colNames[iWeekend])  out[colNames[iWeekend]]  = fmtDuration(calc.weekend);
+    if (iPubHol   >= 0 && colNames[iPubHol])   out[colNames[iPubHol]]   = fmtDuration(calc.publicHol);
+    if (iActual   >= 0 && colNames[iActual])   out[colNames[iActual]]   = fmtDuration(calc.actual);
+    if (iTotal    >= 0 && colNames[iTotal])    out[colNames[iTotal]]    = fmtDuration(calc.total);
 
     results.push(out);
 
