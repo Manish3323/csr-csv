@@ -98,6 +98,7 @@
     .alert { border-radius: 7px; padding: 10px 14px; font-size: 0.8rem; margin-top: 12px; display: none; }
     .alert-error { background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }
     .alert-warn  { background: #fffbeb; color: #744210; border: 1px solid #fbd38d; }
+    .alert-info  { background: #ebf8ff; color: #2b6cb0; border: 1px solid #bee3f8; }
 
     .result-wrap { margin-top: 18px; display: none; }
     .result-meta { font-size: 0.8rem; color: #718096; margin-bottom: 10px; }
@@ -198,6 +199,7 @@
 
     <div class="alert alert-error" id="errBox"></div>
     <div class="alert alert-warn"  id="warnBox"></div>
+    <div class="alert alert-info"  id="infoBox"></div>
 
     <div class="result-wrap" id="resultWrap">
       <div class="divider"></div>
@@ -286,6 +288,10 @@ function handleWorkerMsg(data) {
     showErr(data.msg);
   } else if (data.type === 'warn') {
     showWarn(data.msg);
+  } else if (data.type === 'info') {
+    const el = document.getElementById('infoBox');
+    el.textContent = `Banking hours detected from sheet: ${data.bankStart}:00 – ${data.bankEnd}:00`;
+    el.style.display = 'block';
   }
 }
 
@@ -314,7 +320,7 @@ function showWarn(msg) {
 }
 
 function clearMsg() {
-  ['errBox', 'warnBox'].forEach(id => {
+  ['errBox', 'warnBox', 'infoBox'].forEach(id => {
     const el = document.getElementById(id);
     el.textContent = '';
     el.style.display = 'none';

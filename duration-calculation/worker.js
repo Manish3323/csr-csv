@@ -118,14 +118,37 @@ function buildCalendarMap(ws) {
   return { weekendDates, pubHolMap };
 }
 
+// ─── Banking hours parser ─────────────────────────────────────────────────────
+
+/**
+ * Parse banking start/end hours from the "Post banking Hours" column header.
+ * Expected format: "Post banking Hours(00 to 09 & 18 to 24)"
+ *   → off-banking = 00–09 and 18–24  →  banking = 09–18
+ * Returns { bankStart: 9, bankEnd: 18 } (integer hours, 0–24).
+ * Falls back to { bankStart: 9, bankEnd: 18 } if parsing fails.
+ */
+function parseBankingHours(colName) {
+  const DEFAULT = { bankStart: 9, bankEnd: 18 };
+  if (!colName) return DEFAULT;
+  // Match pattern like "(00 to 09 & 18 to 24)"
+  const m = String(colName).match(/\(\s*(\d+)\s+to\s+(\d+)\s*&\s*(\d+)\s+to\s+(\d+)\s*\)/i);
+  if (!m) return DEFAULT;
+  const [, , preEnd, postStart] = m.map(Number);
+  // pre-banking  = 0–preEnd      (e.g. 0–9)
+  // post-banking = postStart–24  (e.g. 18–24)
+  // banking      = preEnd–postStart (e.g. 9–18)
+  if (preEnd >= postStart || preEnd < 0 || postStart > 24) return DEFAULT;
+  return { bankStart: preEnd, bankEnd: postStart };
+}
+
 // ─── Core downtime calculator ─────────────────────────────────────────────────
 
 /**
  * Calculate downtime breakdown for [startDt, endDt).
  * Returns { postBanking, weekend, publicHol, actual, total } in hours.
- * Banking hours: 09:00–18:00 on working (non-holiday, non-weekend) days.
+ * Banking hours: bankStart–bankEnd on working (non-holiday, non-weekend) days.
  */
-function calcDowntime(startDt, endDt, state, weekendDates, pubHolMap) {
+function calcDowntime(startDt, endDt, state, weekendDates, pubHolMap, bankStart, bankEnd) {
   const ZERO = { postBanking: 0, weekend: 0, publicHol: 0, actual: 0, total: 0 };
   if (!startDt || !endDt || endDt <= startDt) return ZERO;
 
@@ -150,8 +173,8 @@ function calcDowntime(startDt, endDt, state, weekendDates, pubHolMap) {
     } else if (isPubHol) {
       publicHol += segHrs;
     } else {
-      const bankS = new Date(y, mo, day,  9, 0, 0).getTime();
-      const bankE = new Date(y, mo, day, 18, 0, 0).getTime();
+      const bankS = new Date(y, mo, day, bankStart, 0, 0).getTime();
+      const bankE = new Date(y, mo, day, bankEnd,   0, 0).getTime();
       const preMs  = Math.max(0, Math.min(bankS, segEndMs) - segStartMs);
       const bankMs = Math.max(0, Math.min(bankE, segEndMs) - Math.max(bankS, segStartMs));
       const postMs = Math.max(0, segEndMs - Math.max(bankE, segStartMs));
@@ -246,9 +269,14 @@ function processDuration(fileAb) {
     );
   }
 
+  // ── Parse banking hours from column header ────────────────────────────────
+  const postBankColName = iPostBank >= 0 ? colNames[iPostBank] : '';
+  const { bankStart, bankEnd } = parseBankingHours(postBankColName);
+  self.postMessage({ type: 'info', bankStart, bankEnd });
+
   const dataRows = raw.slice(2);   // skip both header rows
   const total    = dataRows.length;
-  progress(20, `Found ${total.toLocaleString()} data rows. Processing…`);
+  progress(20, `Found ${total.toLocaleString()} data rows. Banking hours: ${bankStart}:00–${bankEnd}:00. Processing…`);
 
   // ── Overlap tracking per ATM ──────────────────────────────────────────────
   // chain[atmId] = { chainStart: Date, chainEnd: Date }
@@ -307,7 +335,7 @@ function processDuration(fileAb) {
     }
 
     const state = iState >= 0 ? String(row[iState] || '').trim() : '';
-    const calc  = calcDowntime(effectiveStart, endDt, state, weekendDates, pubHolMap);
+    const calc  = calcDowntime(effectiveStart, endDt, state, weekendDates, pubHolMap, bankStart, bankEnd);
 
     // Duration as [H]:MM
     const durHrs = (endDt.getTime() - effectiveStart.getTime()) / 3_600_000;
