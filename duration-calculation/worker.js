@@ -72,8 +72,8 @@ function fmtDuration(totalHours) {
   const h   = Math.floor(totalHours);
   const min = Math.round((totalHours - h) * 60);
   // handle rounding edge case
-  if (min === 60) return `${h + 1}:00`;
-  return `${h}:${String(min).padStart(2, '0')}`;
+  if (min === 60) return `${h + 1}.00`;
+  return `${h}.${String(min).padStart(2, '0')}`;
 }
 
 // ─── Calendar builder ─────────────────────────────────────────────────────────
