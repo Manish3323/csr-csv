@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Duration Calculator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    .app-header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 18px 32px;
+    }
+    .app-header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.3px; }
+    .app-header p  { font-size: 0.8rem; color: #a0aec0; margin-top: 3px; }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 24px 24px 60px; }
+
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 18px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      color: #718096;
+      margin-bottom: 14px;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 0.8rem; font-weight: 600; color: #4a5568; }
+    .field small  { font-size: 0.72rem; color: #a0aec0; }
+
+    .file-drop {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border: 1.5px dashed #cbd5e0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      background: #fafafa;
+    }
+    .file-drop:hover { border-color: #667eea; background: #f0f4ff; }
+    .file-drop.has-file { border-color: #48bb78; background: #f0fff4; }
+    .file-drop input[type="file"] { display: none; }
+    .file-drop-icon { font-size: 1.2rem; }
+    .file-drop-text {
+      font-size: 0.8rem; color: #718096;
+      flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .file-drop.has-file .file-drop-text { color: #276749; font-weight: 500; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 20px;
+      border: none;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .btn-primary { background: #667eea; color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: #5a67d8; }
+    .btn-success { background: #48bb78; color: #fff; }
+    .btn-success:hover:not(:disabled) { background: #38a169; }
+
+    .progress-wrap { margin-top: 14px; display: none; }
+    .progress-bar  { height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      border-radius: 3px;
+      transition: width .25s ease;
+      width: 0%;
+    }
+    .progress-label { font-size: 0.75rem; color: #718096; margin-top: 5px; }
+
+    .alert { border-radius: 7px; padding: 10px 14px; font-size: 0.8rem; margin-top: 12px; display: none; }
+    .alert-error { background: #fff5f5; color: #c53030; border: 1px solid #feb2b2; }
+    .alert-warn  { background: #fffbeb; color: #744210; border: 1px solid #fbd38d; }
+
+    .result-wrap { margin-top: 18px; display: none; }
+    .result-meta { font-size: 0.8rem; color: #718096; margin-bottom: 10px; }
+    .result-meta strong { color: #2d3748; }
+
+    .table-outer { overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0; max-height: 400px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.76rem; white-space: nowrap; }
+    thead th {
+      background: #f7fafc;
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 700;
+      color: #4a5568;
+      border-bottom: 1px solid #e2e8f0;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    tbody td { padding: 6px 12px; border-bottom: 1px solid #f0f0f0; color: #2d3748; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #f7fafc; }
+
+    .calc-col { background: #fffde7 !important; }
+    tbody tr:hover .calc-col { background: #fff9c4 !important; }
+
+    .result-actions { display: flex; gap: 10px; align-items: center; margin-top: 12px; }
+
+    .divider { height: 1px; background: #e2e8f0; margin: 18px 0; }
+
+    .info-box {
+      background: #ebf8ff;
+      border: 1px solid #bee3f8;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.78rem;
+      color: #2b6cb0;
+      margin-bottom: 16px;
+    }
+    .info-box ul { padding-left: 16px; margin-top: 4px; }
+    .info-box li { margin-top: 3px; }
+
+    .stat-badge {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .stat-blue   { background: #ebf4ff; color: #3182ce; }
+    .stat-yellow { background: #fffff0; color: #b7791f; }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <h1>Duration Calculator</h1>
+  <p>Computes effective ticket duration with overlap handling, banking hours, weekends &amp; public holiday deduction</p>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-title">Input File</div>
+
+    <div class="info-box">
+      <strong>Expected file structure:</strong>
+      <ul>
+        <li><strong>Data sheet</strong> — two header rows; data from row 3 onwards.
+          Required columns: <em>ATM ID, State, Start Date, Start Time, End Date, End Time, Duration,
+          Post banking Hours, Weekend Holiday Hours, Public Holiday Hours, Actual Downtime, Total Downtime</em></li>
+        <li><strong>Calender sheet</strong> — columns: <em>DATE, STATE, HOLIDAY</em>
+          (Weekend Holiday entries apply to all states; other entries are state-specific)</li>
+        <li>Overlap rule: if a ticket for the same ATM starts before the previous ticket closes,
+          its effective duration = <em>(prev end − prev start) + (curr end − prev end)</em> = curr end − first start</li>
+      </ul>
+    </div>
+
+    <div class="field">
+      <label>Excel File (.xlsx)</label>
+      <div class="file-drop" id="dropFile" onclick="document.getElementById('fileInput').click()">
+        <span class="file-drop-icon">📊</span>
+        <span class="file-drop-text" id="labelFile">Click to select .xlsx file</span>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="onFilePicked()">
+      </div>
+      <small>File must contain a <strong>Data</strong> sheet and a <strong>Calender</strong> sheet</small>
+    </div>
+
+    <div style="margin-top:16px;">
+      <button class="btn btn-primary" id="btnProcess" onclick="runProcess()" disabled>
+        ▶ Process
+      </button>
+    </div>
+
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel">Starting…</div>
+    </div>
+
+    <div class="alert alert-error" id="errBox"></div>
+    <div class="alert alert-warn"  id="warnBox"></div>
+
+    <div class="result-wrap" id="resultWrap">
+      <div class="divider"></div>
+      <div class="result-meta" id="resultMeta"></div>
+      <div class="table-outer" id="resultTable"></div>
+      <div class="result-actions">
+        <button class="btn btn-success" id="btnDownload" onclick="downloadCSV()">⬇ Download CSV</button>
+        <span id="dlMeta" style="font-size:.75rem;color:#718096;"></span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let csvData   = null;
+let worker    = null;
+
+const CALC_COLS = new Set([
+  'Duration',
+  'Post banking Hours(00 to 09 & 18 to 24)',
+  'Weekend Holiday Hours',
+  'Public Holiday Hours',
+  'Actual Downtime',
+  'Total Downtime',
+]);
+
+// ─── File picked ──────────────────────────────────────────────────────────────
+function onFilePicked() {
+  const input = document.getElementById('fileInput');
+  const drop  = document.getElementById('dropFile');
+  const label = document.getElementById('labelFile');
+  if (!input.files.length) return;
+  label.textContent = input.files[0].name;
+  drop.classList.add('has-file');
+  document.getElementById('btnProcess').disabled = false;
+  clearMsg();
+  hideResult();
+}
+
+// ─── Run ──────────────────────────────────────────────────────────────────────
+async function runProcess() {
+  const input = document.getElementById('fileInput');
+  if (!input.files.length) return showErr('Please select a file first.');
+
+  clearMsg();
+  setLoading(true);
+  hideResult();
+
+  try {
+    const ab = await readFileAB(input.files[0]);
+
+    if (worker) worker.terminate();
+    worker = new Worker('worker.js');
+
+    worker.onmessage = e => handleWorkerMsg(e.data);
+    worker.onerror   = e => { setLoading(false); showErr(e.message || 'Worker error'); };
+
+    worker.postMessage({ file: ab }, [ab]);
+  } catch (err) {
+    setLoading(false);
+    showErr(err.message || String(err));
+  }
+}
+
+function readFileAB(file) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload  = e => resolve(e.target.result);
+    fr.onerror = reject;
+    fr.readAsArrayBuffer(file);
+  });
+}
+
+// ─── Worker messages ──────────────────────────────────────────────────────────
+function handleWorkerMsg(data) {
+  if (data.type === 'progress') {
+    setProgress(data.pct, data.msg);
+  } else if (data.type === 'done') {
+    setLoading(false);
+    csvData = data.csv;
+    showResult(data.preview, data.total, data.overlaps);
+  } else if (data.type === 'error') {
+    setLoading(false);
+    showErr(data.msg);
+  } else if (data.type === 'warn') {
+    showWarn(data.msg);
+  }
+}
+
+// ─── UI helpers ───────────────────────────────────────────────────────────────
+function setLoading(on) {
+  document.getElementById('btnProcess').disabled = on;
+  document.getElementById('progressWrap').style.display = on ? 'block' : 'none';
+  if (!on) document.getElementById('progressFill').style.width = '0%';
+}
+
+function setProgress(pct, msg) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = msg;
+}
+
+function showErr(msg) {
+  const el = document.getElementById('errBox');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function showWarn(msg) {
+  const el = document.getElementById('warnBox');
+  el.textContent = (el.textContent ? el.textContent + ' | ' : '') + msg;
+  el.style.display = 'block';
+}
+
+function clearMsg() {
+  ['errBox', 'warnBox'].forEach(id => {
+    const el = document.getElementById(id);
+    el.textContent = '';
+    el.style.display = 'none';
+  });
+}
+
+function hideResult() {
+  document.getElementById('resultWrap').style.display = 'none';
+}
+
+function showResult(preview, total, overlaps) {
+  document.getElementById('resultWrap').style.display = 'block';
+
+  const overlapBadge = overlaps > 0
+    ? ` &nbsp;<span class="stat-badge stat-yellow">${overlaps.toLocaleString()} overlaps adjusted</span>`
+    : '';
+  document.getElementById('resultMeta').innerHTML =
+    `<strong>${total.toLocaleString()}</strong> records processed.
+     Preview: first ${Math.min(20, preview.length)} rows.${overlapBadge}`;
+  document.getElementById('dlMeta').textContent = `CSV ready (${total.toLocaleString()} rows)`;
+
+  if (!preview.length) {
+    document.getElementById('resultTable').innerHTML =
+      '<p style="padding:12px;color:#718096;font-size:.8rem;">No rows returned.</p>';
+    return;
+  }
+
+  const cols = Object.keys(preview[0]);
+  let html = '<table><thead><tr>';
+  cols.forEach(c => {
+    html += `<th${CALC_COLS.has(c) ? ' class="calc-col"' : ''}>${esc(c)}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+  preview.forEach(row => {
+    html += '<tr>';
+    cols.forEach(c => {
+      html += `<td${CALC_COLS.has(c) ? ' class="calc-col"' : ''}>${esc(row[c])}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  document.getElementById('resultTable').innerHTML = html;
+}
+
+function esc(v) {
+  if (v == null) return '';
+  return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ─── Download ─────────────────────────────────────────────────────────────────
+function downloadCSV() {
+  if (!csvData) return;
+  const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `duration-output-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
