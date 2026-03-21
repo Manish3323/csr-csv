@@ -206,7 +206,7 @@
       <div class="result-meta" id="resultMeta"></div>
       <div class="table-outer" id="resultTable"></div>
       <div class="result-actions">
-        <button class="btn btn-success" id="btnDownload" onclick="downloadCSV()">⬇ Download CSV</button>
+        <button class="btn btn-success" id="btnDownload" onclick="downloadXLSX()">⬇ Download XLSX</button>
         <span id="dlMeta" style="font-size:.75rem;color:#718096;"></span>
       </div>
     </div>
@@ -216,7 +216,7 @@
 
 <script>
 // ─── State ────────────────────────────────────────────────────────────────────
-let csvData   = null;
+let xlsxData  = null;
 let worker    = null;
 
 const CALC_COLS = new Set([
@@ -281,7 +281,7 @@ function handleWorkerMsg(data) {
     setProgress(data.pct, data.msg);
   } else if (data.type === 'done') {
     setLoading(false);
-    csvData = data.csv;
+    xlsxData = data.xlsx;
     showResult(data.preview, data.total, data.overlaps);
   } else if (data.type === 'error') {
     setLoading(false);
@@ -371,13 +371,13 @@ function esc(v) {
 }
 
 // ─── Download ─────────────────────────────────────────────────────────────────
-function downloadCSV() {
-  if (!csvData) return;
-  const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+function downloadXLSX() {
+  if (!xlsxData) return;
+  const blob = new Blob([xlsxData], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href     = url;
-  a.download = `duration-output-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `duration-output-${new Date().toISOString().slice(0, 10)}.xlsx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
