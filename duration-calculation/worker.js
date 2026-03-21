@@ -63,7 +63,7 @@ function fmtDuration(totalHours) {
 // ─── Calendar builder ─────────────────────────────────────────────────────────
 
 function buildCalendarMap(ws) {
-  const rows = XLSX.utils.sheet_to_json(ws, { defval: '', cellDates: true });
+  const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
   const weekendDates = new Set();
   const pubHolMap    = new Map();
   if (!rows.length) return { weekendDates, pubHolMap };
@@ -154,7 +154,11 @@ function progress(pct, msg) {
 
 function processDuration(fileAb) {
   progress(5, 'Reading workbook…');
-  const wb = XLSX.read(fileAb, { type: 'array', cellDates: true });
+  // Read WITHOUT cellDates — keeps dates as Excel serial numbers (no Date objects).
+  // This avoids a SheetJS "Invalid array length" error when writing back ~280 K rows
+  // that are full of Date objects needing re-serialisation. toDate() and
+  // combineDateTime() already handle raw numeric serials for arithmetic.
+  const wb = XLSX.read(fileAb, { type: 'array', cellDates: false });
 
   const dataSheetName = wb.SheetNames.find(n => /^data$/i.test(n.trim())) || wb.SheetNames[0];
   const calSheetName  = wb.SheetNames.find(n => /cal/i.test(n.trim()));
@@ -165,7 +169,8 @@ function processDuration(fileAb) {
 
   progress(15, 'Parsing data sheet…');
   const ws  = wb.Sheets[dataSheetName];
-  const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null, cellDates: true });
+  // raw: false → use formatted text (w) for display; raw numbers for arithmetic via cell.v
+  const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
   if (raw.length < 2) throw new Error('Data sheet has too few rows.');
 
   const colNames = raw[1].map(v => (v == null ? '' : String(v).trim()));
@@ -237,8 +242,14 @@ function processDuration(fileAb) {
         const obj = {};
         colNames.forEach((name, j) => {
           if (!name) return;
-          const v = row[j];
-          obj[name] = v instanceof Date ? cellDateToStr(v) : (v == null ? '' : String(v));
+          const v    = row[j];
+          const addr = XLSX.utils.encode_cell({ r: i + 2, c: j });
+          const cell = ws[addr];
+          if (typeof v === 'number' && cell && cell.w) {
+            obj[name] = cell.w;
+          } else {
+            obj[name] = v == null ? '' : String(v);
+          }
         });
         durCols.forEach(c => { if (colNames[c]) obj[colNames[c]] = '0.00'; });
         preview.push(obj);
@@ -276,8 +287,17 @@ function processDuration(fileAb) {
       const obj = {};
       colNames.forEach((name, j) => {
         if (!name) return;
-        const v = row[j];
-        obj[name] = v instanceof Date ? cellDateToStr(v) : (v == null ? '' : String(v));
+        const v   = row[j];
+        const addr = XLSX.utils.encode_cell({ r: i + 2, c: j });
+        const cell = ws[addr];
+        // With cellDates:false, date/time cells are numbers; use the cell's formatted text (w)
+        // if available, otherwise fall back to cellDateToStr on the parsed Date.
+        if (typeof v === 'number' && cell && cell.w) {
+          obj[name] = cell.w;
+        } else {
+          const d = (typeof v === 'number') ? toDate(v) : null;
+          obj[name] = (d && !isNaN(d.getTime())) ? cellDateToStr(d) : (v == null ? '' : String(v));
+        }
       });
       if (iDuration >= 0 && colNames[iDuration]) obj[colNames[iDuration]] = fmtDuration(durHrs);
       if (iPostBank >= 0 && colNames[iPostBank]) obj[colNames[iPostBank]] = fmtDuration(calc.postBanking);
@@ -302,9 +322,13 @@ function processDuration(fileAb) {
   XLSX.utils.book_append_sheet(wbOut, ws, dataSheetName);
   XLSX.utils.book_append_sheet(wbOut, wb.Sheets[calSheetName], calSheetName);
 
-  const xlsxArr = XLSX.write(wbOut, { type: 'array', bookType: 'xlsx' });
-  // Slice to get exact ArrayBuffer (avoid sending oversized pooled buffer)
-  const xlsxBuf = xlsxArr.buffer.slice(xlsxArr.byteOffset, xlsxArr.byteOffset + xlsxArr.byteLength);
+  // compression:true uses deflate which dramatically reduces output size and avoids
+  // the large internal array allocations that cause "Invalid array length" on huge sheets.
+  // SheetJS write with type:'array' returns a plain Array (not Uint8Array) in 0.20.x,
+  // so .buffer is undefined. Wrapping in new Uint8Array() handles both cases.
+  const xlsxArr = XLSX.write(wbOut, { type: 'array', bookType: 'xlsx', compression: true });
+  const uint8   = new Uint8Array(xlsxArr);
+  const xlsxBuf = uint8.buffer.slice(uint8.byteOffset, uint8.byteOffset + uint8.byteLength);
 
   self.postMessage(
     { type: 'done', xlsx: xlsxBuf, preview, total, overlaps: overlapCt },
