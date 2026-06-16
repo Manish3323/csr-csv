@@ -64,16 +64,17 @@ function fmtDuration(totalHours) {
 
 function buildCalendarMap(ws) {
   const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
-  const weekendDates = new Set();
-  const pubHolMap    = new Map();
-  if (!rows.length) return { weekendDates, pubHolMap };
+  const weekendDates  = new Set();
+  const pubHolMap     = new Map();   // `${STATE}|${dateStr}` → label
+  const pubHolAllDates = new Set();  // any-state public holiday dates (fallback when row has no state)
+  if (!rows.length) return { weekendDates, pubHolMap, pubHolAllDates };
   const keys       = Object.keys(rows[0]);
   const dateKey    = keys.find(k => /^date$/i.test(k.trim()));
   const stateKey   = keys.find(k => /^state$/i.test(k.trim()));
   const holidayKey = keys.find(k => /^holiday$/i.test(k.trim()));
   if (!dateKey || !stateKey || !holidayKey) {
     self.postMessage({ type: 'warn', msg: 'Calender sheet: could not find DATE / STATE / HOLIDAY columns' });
-    return { weekendDates, pubHolMap };
+    return { weekendDates, pubHolMap, pubHolAllDates };
   }
   for (const row of rows) {
     const label = String(row[holidayKey] || '').trim();
@@ -86,9 +87,10 @@ function buildCalendarMap(ws) {
       weekendDates.add(dateStr);
     } else {
       pubHolMap.set(`${state}|${dateStr}`, label);
+      pubHolAllDates.add(dateStr);
     }
   }
-  return { weekendDates, pubHolMap };
+  return { weekendDates, pubHolMap, pubHolAllDates };
 }
 
 // ─── Banking hours parser ─────────────────────────────────────────────────────
@@ -117,9 +119,11 @@ function calcDowntime(startDt, endDt, state, weekendDates, pubHolMap, bankStart,
     const segStartMs = cur.getTime();
     const segEndMs   = Math.min(endDt.getTime(), dayEnd.getTime());
     const segHrs     = (segEndMs - segStartMs) / 3_600_000;
-    const dow        = new Date(y, mo, day).getDay();
     const dateStr    = `${y}-${String(mo+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    const isWeekend  = (dow === 0 || dow === 6) || weekendDates.has(dateStr);
+    // Weekends come ONLY from the Calender sheet (Sundays + 2nd/4th Saturdays for
+    // banking). Do NOT force every Sat/Sun via getDay(): the 1st/3rd/5th Saturdays
+    // (e.g. May 2/16/30) are working days and are intentionally absent from the sheet.
+    const isWeekend  = weekendDates.has(dateStr);
     const isPubHol   = !isWeekend && pubHolMap.has(`${normState}|${dateStr}`);
     if (isWeekend) {
       weekend += segHrs;
